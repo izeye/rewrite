@@ -74,6 +74,26 @@ public class ClasspathScanningLoader implements ResourceLoader {
         }
     }
 
+    public ClasspathScanningLoader(Path jarPath, Properties properties, String[] acceptPackages) {
+        URLClassLoader classpathLoader;
+        try {
+            classpathLoader = new URLClassLoader(new URL[] {jarPath.toUri().toURL()},
+                    getClass().getClassLoader()
+            );
+        } catch (MalformedURLException e) {
+            throw new UncheckedIOException(e);
+        }
+
+        scanYaml(new ClassGraph()
+                .ignoreParentClassLoaders()
+                .overrideClassLoaders(classpathLoader)
+                .acceptPaths("META-INF/rewrite"), properties);
+
+        scanClasses(new ClassGraph()
+                .ignoreParentClassLoaders()
+                .overrideClassLoaders(classpathLoader), acceptPackages);
+    }
+
     private void scanYaml(ClassGraph classGraph, Properties properties) {
         try (ScanResult scanResult = classGraph.enableMemoryMapping().scan()) {
             scanResult.getResourcesWithExtension("yml").forEachInputStreamIgnoringIOException((res, input) -> {
